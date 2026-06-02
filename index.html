@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MetaStrip — See what your photos reveal, then erase it</title>
+<meta name="description" content="Your photos quietly carry GPS coordinates, your device, and timestamps. MetaStrip shows you exactly what they leak and removes it — 100% in your browser. Nothing is ever uploaded." />
+<meta property="og:title" content="MetaStrip — your photos are talking behind your back" />
+<meta property="og:description" content="See the hidden GPS, device, and timestamp data in your photos, and strip it losslessly. 100% local. No upload, no account, no tracking." />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary_large_image" />
+<style>
+  :root{
+    --bg:#0b0e14; --panel:#11161f; --panel2:#161d2a; --line:#222c3d;
+    --txt:#e6edf6; --dim:#8a97ab; --accent:#54d6a6; --accent2:#6aa6ff;
+    --danger:#ff6b6b; --warn:#ffc861; --ok:#54d6a6;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:radial-gradient(1200px 700px at 70% -10%,#16233a 0%,var(--bg) 55%);
+    color:var(--txt);font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;min-height:100vh;
+  }
+  .wrap{max-width:920px;margin:0 auto;padding:42px 20px 80px}
+  header h1{font-size:34px;letter-spacing:-.5px;margin:0 0 6px}
+  header .tag{color:var(--dim);font-size:17px;margin:0 0 4px}
+  .badge{display:inline-flex;gap:7px;align-items:center;margin-top:14px;padding:7px 13px;border:1px solid var(--line);
+    border-radius:999px;background:var(--panel);color:var(--dim);font-size:13px}
+  .badge b{color:var(--ok)}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok)}
+  .drop{margin:28px 0 10px;border:1.5px dashed #2f3c54;border-radius:16px;background:linear-gradient(180deg,var(--panel),#0f141d);
+    padding:46px 24px;text-align:center;cursor:pointer;transition:.18s}
+  .drop:hover,.drop.over{border-color:var(--accent2);background:linear-gradient(180deg,#13203a,#0f141d)}
+  .drop .big{font-size:19px;font-weight:600}
+  .drop .sub{color:var(--dim);font-size:14px;margin-top:6px}
+  .drop svg{width:40px;height:40px;opacity:.85;margin-bottom:10px}
+  input[type=file]{display:none}
+  .results{margin-top:26px;display:flex;flex-direction:column;gap:18px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .card .top{display:flex;gap:14px;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line)}
+  .thumb{width:54px;height:54px;border-radius:8px;object-fit:cover;background:#0a0d13;flex:none;border:1px solid var(--line)}
+  .fname{font-weight:600;word-break:break-all}
+  .fmeta{color:var(--dim);font-size:13px}
+  .verdict{margin-left:auto;text-align:right;flex:none}
+  .pill{display:inline-block;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;letter-spacing:.2px}
+  .pill.red{background:rgba(255,107,107,.14);color:var(--danger);border:1px solid rgba(255,107,107,.35)}
+  .pill.warn{background:rgba(255,200,97,.13);color:var(--warn);border:1px solid rgba(255,200,97,.32)}
+  .pill.clean{background:rgba(84,214,166,.13);color:var(--ok);border:1px solid rgba(84,214,166,.32)}
+  .body{padding:6px 16px 16px}
+  .row{display:flex;justify-content:space-between;gap:14px;padding:9px 0;border-bottom:1px dashed #1c2535;font-size:14px}
+  .row:last-child{border-bottom:0}
+  .row .k{color:var(--dim);flex:none}
+  .row .v{text-align:right;word-break:break-word}
+  .row.flag .v{color:var(--danger);font-weight:600}
+  .geo{margin-top:10px;padding:12px 14px;border:1px solid rgba(255,107,107,.3);background:rgba(255,107,107,.07);border-radius:10px;font-size:14px}
+  .geo a{color:var(--accent2)}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+  button.btn{font:inherit;font-weight:600;border:0;border-radius:10px;padding:11px 16px;cursor:pointer;transition:.15s}
+  .btn.primary{background:linear-gradient(180deg,#5fe0b0,#36b387);color:#06231a}
+  .btn.primary:hover{filter:brightness(1.07)}
+  .btn.ghost{background:#1a2334;color:var(--txt);border:1px solid var(--line)}
+  .btn.ghost:hover{border-color:var(--accent2)}
+  .clean-note{color:var(--ok);font-size:13px;margin-top:6px}
+  .bar{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+  .empty{color:var(--dim);font-size:14px;text-align:center;margin-top:8px}
+  .support{margin-top:48px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(180deg,var(--panel2),#0f141d);padding:26px}
+  .support h2{margin:0 0 6px;font-size:20px}
+  .support p{color:var(--dim);margin:.4em 0}
+  .addr{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px}
+  .addr code{background:#0a0d13;border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13px;word-break:break-all;flex:1;min-width:240px}
+  .amts{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .amts .btn.ghost{padding:8px 14px}
+  footer{margin-top:46px;color:var(--dim);font-size:13px;text-align:center;line-height:1.8}
+  footer a{color:var(--accent2);text-decoration:none}
+  .how{margin-top:40px;color:var(--dim);font-size:14px}
+  .how h3{color:var(--txt);font-size:16px;margin:0 0 8px}
+  .how ul{margin:0;padding-left:18px}
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:#0f141d;border:1px solid var(--line);
+    color:var(--txt);padding:11px 18px;border-radius:10px;opacity:0;transition:.25s;pointer-events:none;font-size:14px}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>MetaStrip</h1>
+    <p class="tag">Your photos are talking behind your back. See what they reveal — then erase it.</p>
+    <span class="badge"><span class="dot"></span><b>100% in your browser.</b>&nbsp;No upload · no account · no tracking · works offline</span>
+  </header>
+
+  <label class="drop" id="drop" for="file">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#6aa6ff" stroke-width="1.6"><path d="M12 16V4m0 0L8 8m4-4l4 4"/><path d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg>
+    <div class="big">Drop photos here, or click to choose</div>
+    <div class="sub">JPEG · PNG · WebP — your files never leave this device</div>
+    <input type="file" id="file" accept="image/jpeg,image/png,image/webp" multiple />
+  </label>
+
+  <div class="bar" id="bar" style="display:none">
+    <button class="btn primary" id="cleanAll">Strip metadata from all &amp; download</button>
+    <button class="btn ghost" id="clear">Clear</button>
+  </div>
+
+  <div class="results" id="results"></div>
+
+  <section class="support">
+    <h2>MetaStrip is free, forever, and harvests nothing.</h2>
+    <p>No ads, no upstream server, no analytics. The whole tool is one static page — you can read the source. If it kept your location out of a photo and you want to throw something back, you can tip any amount in <b>USDC on Base</b>. It funds more privacy tools like this one.</p>
+    <div class="addr">
+      <code id="wallet">0x0eAFF975a4823c823cfE0c77E9110Ba47291E72A</code>
+      <button class="btn ghost" id="copyWallet">Copy address</button>
+    </div>
+    <p style="font-size:13px;margin-top:8px">Send USDC (or ETH) on Base network to that address. That's it — non-custodial, goes straight to the builder.</p>
+  </section>
+
+  <div class="how">
+    <h3>What a photo can quietly reveal</h3>
+    <ul>
+      <li><b>GPS coordinates</b> — the exact spot a picture was taken, down to a few meters. Your home, your kid's school.</li>
+      <li><b>Your device</b> — make, model, lens, and serial-adjacent identifiers that link photos across the internet to one camera.</li>
+      <li><b>Timestamps</b> — when you were where, in your local timezone.</li>
+      <li><b>Editing trail</b> — the software you used and original capture data, even after you crop.</li>
+    </ul>
+    <p>MetaStrip reads all of it locally, shows you the risk, and removes it <b>losslessly</b> — it surgically drops the metadata blocks without re-compressing your image, so quality is untouched.</p>
+  </div>
+
+  <footer>
+    Built by <a href="#" id="byline">Arc</a> · open source · no telemetry of any kind<br/>
+    Everything happens on your machine. You can turn off your wifi and it still works.
+  </footer>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ---------- tiny helpers ---------- */
+const $ = (s,r=document)=>r.querySelector(s);
+const results = $("#results"), bar = $("#bar");
+const toastEl = $("#toast");
+let TOASTT;
+function toast(m){toastEl.textContent=m;toastEl.classList.add("show");clearTimeout(TOASTT);TOASTT=setTimeout(()=>toastEl.classList.remove("show"),1800);}
+const u16=(d,o,le)=>le?d[o]|d[o+1]<<8:d[o]<<8|d[o+1];
+const u32=(d,o,le)=>le?(d[o]|d[o+1]<<8|d[o+2]<<16|d[o+3]<<24)>>>0:(d[o]<<24|d[o+1]<<16|d[o+2]<<8|d[o+3])>>>0;
+
+/* ---------- EXIF / TIFF parser (JPEG APP1) ---------- */
+const TYPE_SIZE={1:1,2:1,3:2,4:4,5:8,7:1,9:4,10:8};
+const TAGS={0x010F:"Make",0x0110:"Model",0x0112:"Orientation",0x0131:"Software",0x0132:"DateTime",
+  0x013B:"Artist",0x8298:"Copyright",0x9003:"DateTimeOriginal",0x9004:"DateTimeDigitized",
+  0xA433:"LensMake",0xA434:"LensModel",0xA002:"PixelXDimension",0xA003:"PixelYDimension",
+  0x927C:"MakerNote",0x9286:"UserComment",0xC614:"UniqueCameraModel"};
+const GPS_TAGS={1:"GPSLatitudeRef",2:"GPSLatitude",3:"GPSLongitudeRef",4:"GPSLongitude",5:"GPSAltitudeRef",6:"GPSAltitude"};
+
+function readValue(d,base,le,type,count,voff){
+  const size=(TYPE_SIZE[type]||1)*count;
+  let p = size<=4 ? voff : base+u32(d,voff,le);
+  if(p+size>d.length) return null;
+  const out=[];
+  for(let i=0;i<count;i++){
+    if(type===2){ // ascii: read whole string once
+      let s="";for(let j=0;j<count;j++){const c=d[p+j];if(c===0)break;s+=String.fromCharCode(c);}return s.trim();
+    } else if(type===3){out.push(u16(d,p,le));p+=2;}
+    else if(type===4||type===9){out.push(u32(d,p,le));p+=4;}
+    else if(type===5){out.push(u32(d,p,le)/(u32(d,p+4,le)||1));p+=8;}
+    else if(type===10){const n=u32(d,p,le)|0,dn=u32(d,p+4,le)|0;out.push(n/(dn||1));p+=8;}
+    else {out.push(d[p]);p+=1;}
+  }
+  return out.length===1?out[0]:out;
+}
+function readIFD(d,base,off,le,tagmap,wantPointers){
+  const res={},ptr={};
+  if(base+off+2>d.length) return {res,ptr};
+  const n=u16(d,base+off,le);
+  let e=base+off+2;
+  for(let i=0;i<n;i++,e+=12){
+    if(e+12>d.length)break;
+    const tag=u16(d,e,le),type=u16(d,e+2,le),count=u32(d,e+4,le);
+    if(wantPointers&&(tag===0x8769||tag===0x8825)){ptr[tag]=u32(d,e+8,le);continue;}
+    const name=tagmap[tag];
+    if(!name)continue;
+    const v=readValue(d,base,le,type,count,e+8);
+    if(v!==null&&v!=="") res[name]=v;
+  }
+  return {res,ptr};
+}
+function dms(arr,ref){
+  if(!Array.isArray(arr)||arr.length<3)return null;
+  let dd=arr[0]+arr[1]/60+arr[2]/3600;
+  if(ref==="S"||ref==="W")dd=-dd;
+  return dd;
+}
+function parseExif(app1){ // app1 = bytes starting right after "Exif\0\0"
+  const d=app1;
+  if(d.length<8)return null;
+  const le = d[0]===0x49 && d[1]===0x49;
+  if(!(le||(d[0]===0x4D&&d[1]===0x4D)))return null;
+  const ifd0off=u32(d,4,le);
+  const base=0;
+  const main=readIFD(d,base,ifd0off,le,TAGS,true);
+  const out=Object.assign({},main.res);
+  if(main.ptr[0x8769]!==undefined){
+    const sub=readIFD(d,base,main.ptr[0x8769],le,TAGS,false);
+    Object.assign(out,sub.res);
+  }
+  if(main.ptr[0x8825]!==undefined){
+    const g=readIFD(d,base,main.ptr[0x8825],le,GPS_TAGS,false).res;
+    const lat=dms(g.GPSLatitude,g.GPSLatitudeRef), lon=dms(g.GPSLongitude,g.GPSLongitudeRef);
+    if(lat!=null&&lon!=null){out.__gps={lat,lon,alt:g.GPSAltitude};}
+  }
+  return out;
+}
+
+/* ---------- JPEG: locate APP segments + lossless strip ---------- */
+function jpegScan(d){ // returns {exif, hasXmp, hasIptc, strip()}
+  if(!(d[0]===0xFF&&d[1]===0xD8))return null;
+  let p=2, exif=null, hasXmp=false, hasIptc=false;
+  const dropRanges=[];
+  while(p<d.length-1){
+    if(d[p]!==0xFF){p++;continue;}
+    const m=d[p+1];
+    if(m===0xD8||m===0xD9||(m>=0xD0&&m<=0xD7)||m===0x01){p+=2;continue;}
+    if(m===0xDA)break; // start of scan -> image data follows
+    const len=u16(d,p+2,false);
+    const segStart=p, segEnd=p+2+len;
+    if(m===0xE1){ // APP1: Exif or XMP
+      const sig=String.fromCharCode(...d.slice(p+4,p+4+6));
+      if(sig.startsWith("Exif")){exif=parseExif(d.slice(p+4+6,segEnd));dropRanges.push([segStart,segEnd]);}
+      else if(String.fromCharCode(...d.slice(p+4,p+4+10)).startsWith("http")){hasXmp=true;dropRanges.push([segStart,segEnd]);}
+      else dropRanges.push([segStart,segEnd]);
+    } else if(m===0xED){hasIptc=true;dropRanges.push([segStart,segEnd]);} // APP13 Photoshop/IPTC
+    else if(m===0xEE){dropRanges.push([segStart,segEnd]);} // APP14 Adobe
+    else if(m===0xFE){dropRanges.push([segStart,segEnd]);} // COM comment
+    p=segEnd;
+  }
+  function strip(){
+    if(!dropRanges.length)return d;
+    const keep=[];let cur=0;
+    for(const[s,e]of dropRanges){keep.push([cur,s]);cur=e;}
+    keep.push([cur,d.length]);
+    let total=0;for(const[s,e]of keep)total+=e-s;
+    const out=new Uint8Array(total);let o=0;
+    for(const[s,e]of keep){out.set(d.subarray(s,e),o);o+=e-s;}
+    return out;
+  }
+  return {exif,hasXmp,hasIptc,strip,had:dropRanges.length>0};
+}
+
+/* ---------- PNG: text chunks + strip ---------- */
+const PNG_META=new Set(["tEXt","zTXt","iTXt","tIME","eXIf"]);
+function pngScan(d){
+  if(!(d[0]===0x89&&d[1]===0x50&&d[2]===0x4E&&d[3]===0x47))return null;
+  let p=8;const text={};let had=false;const keep=[d.slice(0,8)];
+  while(p<d.length){
+    const len=u32(d,p,false);
+    const type=String.fromCharCode(d[p+4],d[p+5],d[p+6],d[p+7]);
+    const chunkEnd=p+12+len;
+    if(PNG_META.has(type)){
+      had=true;
+      if(type==="tEXt"){const raw=d.slice(p+8,p+8+len);let k="";let i=0;for(;i<raw.length&&raw[i]!==0;i++)k+=String.fromCharCode(raw[i]);let v="";for(let j=i+1;j<raw.length;j++)v+=String.fromCharCode(raw[j]);text[k]=v;}
+      else if(type==="eXIf"){text["(embedded EXIF block)"]="present";}
+      else text["("+type+")"]="present";
+    } else keep.push(d.slice(p,chunkEnd));
+    p=chunkEnd;
+    if(type==="IEND")break;
+  }
+  function strip(){let total=0;for(const k of keep)total+=k.length;const out=new Uint8Array(total);let o=0;for(const k of keep){out.set(k,o);o+=k.length;}return out;}
+  return {text,had,strip};
+}
+
+/* ---------- risk + rendering ---------- */
+function fmtBytes(n){return n<1024?n+" B":n<1048576?(n/1024).toFixed(1)+" KB":(n/1048576).toFixed(2)+" MB";}
+function severityFromFindings(f){
+  if(f.gps)return"red";
+  if(f.rows.length)return"warn";
+  return"clean";
+}
+function analyze(name,buf){
+  const d=new Uint8Array(buf);
+  const findings={rows:[],gps:null,strip:null,format:""};
+  const j=jpegScan(d);
+  if(j){
+    findings.format="JPEG";
+    findings.strip=j.strip;
+    findings.had=j.had;
+    const x=j.exif||{};
+    if(x.__gps)findings.gps=x.__gps;
+    const order=["Make","Model","LensModel","LensMake","DateTimeOriginal","DateTime","DateTimeDigitized","Software","Artist","Copyright","UserComment","UniqueCameraModel"];
+    for(const k of order)if(x[k]!=null)findings.rows.push([k,String(x[k]).slice(0,80)]);
+    if(j.hasXmp)findings.rows.push(["XMP packet","present (edit history / app data)"]);
+    if(j.hasIptc)findings.rows.push(["IPTC / Photoshop","present"]);
+    if(x.MakerNote!=null)findings.rows.push(["MakerNote","proprietary camera data present"]);
+    return findings;
+  }
+  const png=pngScan(d);
+  if(png){
+    findings.format="PNG";findings.strip=png.strip;findings.had=png.had;
+    for(const k in png.text)findings.rows.push([k,String(png.text[k]).slice(0,80)]);
+    return findings;
+  }
+  // webp/other: we can re-encode via canvas to drop metadata, but keep v1 honest:
+  findings.format="other";
+  findings.unsupported=true;
+  return findings;
+}
+
+const FILES=[]; // {name, type, buf, findings, cleaned}
+function render(){
+  results.innerHTML="";
+  if(!FILES.length){bar.style.display="none";return;}
+  bar.style.display="flex";
+  FILES.forEach((f,idx)=>{
+    const fnd=f.findings;
+    const sev=fnd.unsupported?"warn":severityFromFindings(fnd);
+    const card=document.createElement("div");card.className="card";
+    const blobUrl=URL.createObjectURL(new Blob([f.buf]));
+    let verdict, vClass;
+    if(fnd.unsupported){verdict="Unsupported";vClass="warn";}
+    else if(sev==="red"){verdict="Location exposed";vClass="red";}
+    else if(sev==="warn"){verdict=fnd.rows.length+" item"+(fnd.rows.length>1?"s":"")+" found";vClass="warn";}
+    else{verdict="Already clean";vClass="clean";}
+    card.innerHTML=`
+      <div class="top">
+        <img class="thumb" src="${blobUrl}" alt=""/>
+        <div>
+          <div class="fname">${f.name}</div>
+          <div class="fmeta">${fnd.format.toUpperCase()} · ${fmtBytes(f.buf.byteLength)}</div>
+        </div>
+        <div class="verdict"><span class="pill ${vClass}">${verdict}</span></div>
+      </div>`;
+    const body=document.createElement("div");body.className="body";
+    if(fnd.unsupported){
+      body.innerHTML=`<div class="empty">This format isn't parsed yet. MetaStrip currently reads JPEG and PNG losslessly. (WebP/HEIC coming.)</div>`;
+    } else if(fnd.gps){
+      const g=fnd.gps;
+      const geo=document.createElement("div");geo.className="geo";
+      geo.innerHTML=`📍 <b>This photo pinpoints where it was taken.</b><br/>
+        Latitude <b>${g.lat.toFixed(6)}</b>, Longitude <b>${g.lon.toFixed(6)}</b>${g.alt?(" · ~"+Math.round(g.alt)+"m elevation"):""}<br/>
+        <a href="https://www.openstreetmap.org/?mlat=${g.lat}&mlon=${g.lon}#map=17/${g.lat}/${g.lon}" target="_blank" rel="noopener">See this exact spot on a map →</a>`;
+      body.appendChild(geo);
+    }
+    fnd.rows.forEach(([k,v])=>{
+      const flag=/gps|maker|user|serial/i.test(k);
+      const r=document.createElement("div");r.className="row"+(flag?" flag":"");
+      r.innerHTML=`<span class="k">${k}</span><span class="v">${v}</span>`;
+      body.appendChild(r);
+    });
+    if(!fnd.unsupported){
+      const actions=document.createElement("div");actions.className="actions";
+      if(fnd.had){
+        const b=document.createElement("button");b.className="btn primary";b.textContent="Strip metadata & download clean copy";
+        b.onclick=()=>downloadClean(idx);
+        actions.appendChild(b);
+      }else{
+        const note=document.createElement("div");note.className="clean-note";note.textContent="✓ No removable metadata found — nothing to strip.";
+        actions.appendChild(note);
+      }
+      body.appendChild(actions);
+    }
+    card.appendChild(body);
+    results.appendChild(card);
+  });
+}
+function cleanName(name){const dot=name.lastIndexOf(".");return dot>0?name.slice(0,dot)+"-clean"+name.slice(dot):name+"-clean";}
+function downloadBytes(bytes,name,mime){
+  const a=document.createElement("a");const url=URL.createObjectURL(new Blob([bytes],{type:mime}));
+  a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);
+}
+function downloadClean(idx){
+  const f=FILES[idx];const out=f.findings.strip();
+  const mime=f.findings.format==="PNG"?"image/png":"image/jpeg";
+  downloadBytes(out,cleanName(f.name),mime);
+  const saved=f.buf.byteLength-out.byteLength;
+  toast(saved>0?`Clean copy saved — removed ${fmtBytes(saved)} of hidden data`:"Clean copy saved");
+}
+
+/* ---------- file intake ---------- */
+async function addFiles(list){
+  for(const file of list){
+    if(!/^image\//.test(file.type) && !/\.(jpe?g|png|webp)$/i.test(file.name))continue;
+    const buf=await file.arrayBuffer();
+    const findings=analyze(file.name,buf);
+    FILES.push({name:file.name,type:file.type,buf,findings});
+  }
+  render();
+}
+const drop=$("#drop"),fileIn=$("#file");
+fileIn.addEventListener("change",e=>addFiles(e.target.files));
+;["dragenter","dragover"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("over");}));
+;["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("over");}));
+drop.addEventListener("drop",e=>{if(e.dataTransfer&&e.dataTransfer.files)addFiles(e.dataTransfer.files);});
+$("#clear").onclick=()=>{FILES.length=0;fileIn.value="";render();};
+$("#cleanAll").onclick=()=>{let n=0;FILES.forEach((f,i)=>{if(f.findings&&f.findings.had){downloadClean(i);n++;}});if(!n)toast("Nothing to strip — all files are already clean");};
+$("#copyWallet").onclick=async()=>{try{await navigator.clipboard.writeText($("#wallet").textContent.trim());toast("Wallet address copied");}catch{toast("Copy failed — select it manually");}};
+$("#byline").onclick=e=>{e.preventDefault();toast("Made by Arc — privacy tools that don't harvest you");};
+</script>
+</body>
+</html>

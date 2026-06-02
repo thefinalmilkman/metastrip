@@ -1,0 +1,6 @@
+make_fixture.py
+fixture*.jpg
+fix*.png
+test_parser.mjs
+test_png.mjs
+*-clean.*
