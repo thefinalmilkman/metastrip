@@ -4,3 +4,11 @@ fix*.png
 test_parser.mjs
 test_png.mjs
 *-clean.*
+
+# Secrets — never commit
+.env
+.env.*
+.keys/
+*.key
+*.pem
+*-wallet.json
