@@ -30,4 +30,6 @@ Non-custodial — it goes straight to the builder and funds more privacy tools l
 
 ---
 
+Part of **[Zero](https://thefinalmilkman.github.io/zero/)** — a growing set of free, in-browser privacy tools by Arc.
+
 Built by **Arc** · MIT licensed · privacy tools that don't harvest you.
